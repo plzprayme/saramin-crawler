@@ -10,38 +10,30 @@ from time import sleep
 
 from datetime import date, timedelta
 
-def filter_recruitment(rows):
-    rows = filter_career_condition(rows)
-    print("AFTER FILTER CAREER LEN", len(rows))
-    rows = filter_deadline_condition(rows)
-    print("AFTER DEADLINE CAREER LEN", len(rows))
-    return rows
+# def filter_recruitment(rows):
+#     rows = filter_by_condition(rows)
+#     return rows
 
-def filter_career_condition(rows):
+def filter_by_condition(rows):
     result = []
     for row in rows:
+        location_condition = row.find_element_by_css_selector(".work_place")
         career_condition = row.find_element_by_css_selector(".career").text
-
-        if "신입" in career_condition or "경력무관" in career_condition:
-            print("FILTERED CAREER CONDITION", career_condition)
-            result.append(row)
-        else:
-            print("UNFILTERED CAREER CONDITION", career_condition)
-
-    
-    return result
-
-def filter_deadline_condition(rows):
-    result = []
-    for row in rows:
-        deadline = row.find_element_by_css_selector('.deadlines').text
+        deadline = row.find_element_by_css_selector('.deadlines').text  
+        
         try:
             if is_deadline_over_ten_days(deadline):
-                print("FILTERED DEADLINE OVER 10 DAYS", deadline)
+                print("FILTERED DEADLINE ROW", deadline)
+                result.append(row)
+            if "대전" in location_condition:
+                print("FILTERED LOCATION CONDITION ROW", location_condition)
+                result.append(row)
+            elif "신입" in career_condition or "경력무관" in career_condition:
+                print("FILTERED CAREER CONDITION ROW", career_condition)
                 result.append(row)
         except:
-            print("CATCH ERROR", deadline)
-    
+            print("UNFILTERED DEADLINE ROW", deadline)
+
     return result
 
 def is_deadline_over_ten_days(deadline): 
@@ -64,10 +56,25 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
 
     driver.get("http://www.saramin.co.kr/zf_user/jobs/list/domestic?loc_mcd=105000&cat_cd=404%2C407%2C408%2C402%2C409%2C416%2C413%2C411%2C417%2C410&panel_type=&search_optional_item=n&search_done=y&panel_count=y")
     
+
     rows = driver.find_elements_by_css_selector("#default_list_wrap > section > div.list_body > .list_item")
     print("BEFORE", len(rows))
-    rows = filter_recruitment(rows)
+    rows = filter_by_condition(rows)
     print("AFTER", len(rows))
+
+    for row in rows:
+        # 각 아이템의 URL 가져오기
+        print("URL", row.find_element_by_css_selector('.str_tit').get_attribute('href'))
+        url = row.find_element_by_css_selector('.str_tit').get_attribute('href')
+        # 아이템으로 이동하기
+        driver.get(url)
+        # DOM 로딩 기다리기
+        driver.implicitly_wait(5)
+
+        # HTML 얻기
+        html = driver.page_source
+        soup = bs4(html, 'html.parser')
+
     # for row in rows:
     #     deadline = row.find_element_by_css_selector('.deadlines').text
     #     if is_recruit_junior():
