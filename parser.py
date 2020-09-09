@@ -10,6 +10,8 @@ from time import sleep
 
 from datetime import date, timedelta
 
+from time import sleep
+
 # def filter_recruitment(rows):
 #     rows = filter_by_condition(rows)
 #     return rows
@@ -25,14 +27,14 @@ def filter_by_condition(rows):
             if is_deadline_over_ten_days(deadline):
                 print("FILTERED DEADLINE ROW", deadline)
                 result.append(row)
-            if "대전" in location_condition:
+            elif "대전" in location_condition:
                 print("FILTERED LOCATION CONDITION ROW", location_condition)
                 result.append(row)
             elif "신입" in career_condition or "경력무관" in career_condition:
                 print("FILTERED CAREER CONDITION ROW", career_condition)
                 result.append(row)
         except:
-            print("UNFILTERED DEADLINE ROW", deadline)
+            print("UNFILTERED CAREER ROW", deadline)
 
     return result
 
@@ -59,10 +61,10 @@ def get_column_value(soup, selector, parser_function):
         return ""
 
 def default_parser(soup, selector):
-    return soup.select(selector).text
+    return soup.select(selector)[0].text
 
 def deadline_parser(soup, selector):
-    deadline = soup.select(selector).text # YYYY.MM.DD tt:mm
+    deadline = soup.select(selector)[0].text # YYYY.MM.DD tt:mm
     return deadline.split(" ")[0] # YYYY.MM.DD
 
 with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
@@ -77,6 +79,7 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
     print("AFTER", len(rows))
 
     for row in rows:
+        print("ROW", row)
         # row에서 해결할 수 있는 것들
 
         # 각 아이템의 회사 이름 가져오기
@@ -93,27 +96,35 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
         driver.get(url)
 
         # DOM 로딩 기다리기
-        driver.implicitly_wait(5)
+        # driver.implicitly_wait(5)
+        wait.until(presence_of_element_located(
+            (By.CSS_SELECTOR, ".info_period > dd:nth-child(4)")
+        ))
+        # sleep(10)
 
         # HTML 얻기
         html = driver.page_source
         soup = bs4(html, 'html.parser')
+        # print("SOUPED WORK LOCATION", soup.select(".info_period > dd:nth-child(4)").text)
 
-        # 각 아이템의 근무 주소 가져오기
-        work_location = get_column_value(soup, "#map_0 > div > address > span", default_parser)
-        print("WORK LOCATION", work_location)
+        # # 각 아이템의 근무 주소 가져오기
+        # work_location = get_column_value(soup, "#map_0 > div > address > span", default_parser)
+        # print("WORK LOCATION", work_location)
 
-        # 각 아이템의 이력서 제출 형식 가져오기
-        resume_submission_format = get_column_value(soup, '.template', default_parser)
-        print("RESUME SUBMISSION FORMAT", resume_submission_format)
+        # # 각 아이템의 이력서 제출 형식 가져오기
+        # resume_submission_format = get_column_value(soup, '.template', default_parser)
+        # print("RESUME SUBMISSION FORMAT", resume_submission_format)
 
         # 각 아이템의 모집 마감 날짜 가져오기
-        deadline = get_column_value(soup, '.info_period > dd:nth-child(4)', deadline_parser)
-        print("DEADLINE", deadline)
+        # deadline = get_column_value(soup, '.info_period > dd:nth-child(4)', deadline_parser)
+        # print("DEADLINE", deadline)
         
-        # 각 아이템의 복리후생 가져오기
-        benefit = get_column_value(soup, '.jv_benefit', default_parser)
-        print("BENEFIT", benefit)
+        # # 각 아이템의 복리후생 가져오기
+        # benefit = get_column_value(soup, '.jv_benefit', default_parser)
+        # print("BENEFIT", benefit)
+        
+        driver.implicitly_wait(10)
+        driver.back()
 
     # for row in rows:
     #     deadline = row.find_element_by_css_selector('.deadlines').text
