@@ -21,7 +21,8 @@ def filter_by_condition(rows):
     for row in rows:
         location_condition = row.find_element_by_css_selector(".work_place")
         career_condition = row.find_element_by_css_selector(".career").text
-        deadline = row.find_element_by_css_selector('.deadlines').text  
+        deadline = row.find_element_by_css_selector('.deadlines').text
+        # url = row.find_element_by_css_selector('.str_tit').get_attribute('href')
         
         try:
             if is_deadline_over_ten_days(deadline):
@@ -105,26 +106,24 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
         # HTML 얻기
         html = driver.page_source
         soup = bs4(html, 'html.parser')
-        # print("SOUPED WORK LOCATION", soup.select(".info_period > dd:nth-child(4)").text)
 
         # # 각 아이템의 근무 주소 가져오기
-        # work_location = get_column_value(soup, "#map_0 > div > address > span", default_parser)
-        # print("WORK LOCATION", work_location)
+        work_location = get_column_value(soup, "#map_0 > div > address > span", default_parser)
+        print("WORK LOCATION", work_location)
 
         # # 각 아이템의 이력서 제출 형식 가져오기
-        # resume_submission_format = get_column_value(soup, '.template', default_parser)
-        # print("RESUME SUBMISSION FORMAT", resume_submission_format)
+        resume_submission_format = get_column_value(soup, '.template', default_parser)
+        print("RESUME SUBMISSION FORMAT", resume_submission_format)
 
         # 각 아이템의 모집 마감 날짜 가져오기
-        # deadline = get_column_value(soup, '.info_period > dd:nth-child(4)', deadline_parser)
-        # print("DEADLINE", deadline)
+        deadline = get_column_value(soup, '.info_period > dd:nth-child(4)', deadline_parser)
+        print("DEADLINE", deadline)
         
         # # 각 아이템의 복리후생 가져오기
-        # benefit = get_column_value(soup, '.jv_benefit', default_parser)
-        # print("BENEFIT", benefit)
+        benefit = get_column_value(soup, '.jv_benefit', default_parser)
+        print("BENEFIT", benefit)
         
-        driver.implicitly_wait(10)
-        driver.back()
+        # driver.back()
 
     # for row in rows:
     #     deadline = row.find_element_by_css_selector('.deadlines').text
