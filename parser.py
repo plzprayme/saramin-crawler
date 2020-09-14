@@ -8,61 +8,41 @@ from bs4 import BeautifulSoup as bs4
 
 from time import sleep
 
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 
 from time import sleep
 
 import pandas as pd
 
-# def filter_recruitment(rows):
-#     rows = filter_by_condition(rows)
-#     return rows
-
-# def filter_by_condition2(rows):
-#     result = []
-#     for row in rows:
-#         location_condition = row.find_element_by_css_selector(".work_place")
-#         career_condition = row.find_element_by_css_selector(".career").text
-#         deadline = row.find_element_by_css_selector('.deadlines').text
-#         # url = row.find_element_by_css_selector('.str_tit').get_attribute('href')
-
-#         try:
-#             if is_deadline_over_ten_days(deadline):
-#                 print("FILTERED DEADLINE ROW", deadline)
-#                 result.append(row)
-#             elif "대전" in location_condition:
-#                 print("FILTERED LOCATION CONDITION ROW", location_condition)
-#                 result.append(row)
-#             elif "신입" in career_condition or "경력무관" in career_condition:
-#                 print("FILTERED CAREER CONDITION ROW", career_condition)
-#                 result.append(row)
-#         except:
-#             print("UNFILTERED CAREER ROW", deadline)
-
-#     return result
-
 
 def filter_by_condition(rows):
     result = []
     for row in rows:
-        location_condition = row.find_element_by_css_selector(".work_place")
+        location_condition = row.find_element_by_css_selector(
+            ".work_place").text
         career_condition = row.find_element_by_css_selector(".career").text
         deadline = row.find_element_by_css_selector('.deadlines').text
         url = row.find_element_by_css_selector(
             '.str_tit').get_attribute('href')
 
         try:
-            if is_deadline_over_ten_days(deadline):
-                print("FILTERED DEADLINE ROW", deadline)
+            if is_deadline_over_ten_days(deadline) \
+                    and "대전" in location_condition  \
+                    and ("신입" in career_condition or "경력무관" in career_condition):
+                print("=====FILTERED ROW=====")
+                print("LOCATION CONDITION", location_condition)
+                print("CAREER CONDITION", career_condition)
+                print("DEADLINE CONDITIOn", deadline)
+                print("=====END FILTERED=====")
                 result.append(url)
-            elif "대전" in location_condition:
-                print("FILTERED LOCATION CONDITION ROW", location_condition)
-                result.append(url)
-            elif "신입" in career_condition or "경력무관" in career_condition:
-                print("FILTERED CAREER CONDITION ROW", career_condition)
-                result.append(url)
+            else:
+                print("=====UNFILTERED ROW=====")
+                print("LOCATION CONDITION", location_condition)
+                print("CAREER CONDITION", career_condition)
+                print("DEADLINE CONDITIOn", deadline)
+                print("=====END UNFILTERED=====")
         except:
-            print("UNFILTERED CAREER ROW", deadline)
+            print("UNFILTERED DEADLINE ROW", deadline)
 
     return result
 
@@ -93,7 +73,7 @@ def get_column_value(soup, selector, parser_function):
 
 
 def default_parser(soup, selector):
-    return soup.select(selector)[0].text
+    return soup.select(selector)[0].text.strip()
 
 
 def deadline_parser(soup, selector):
@@ -104,8 +84,32 @@ def deadline_parser(soup, selector):
 def href_parser(soup, selector):
     return soup.select(selector)[0].attrs["href"]
 
+def benefit_parser(soup, selector):
+    # 버튼이 있는지 없는지 살펴보기
+    # 있으면 버튼 클릭하기
+    # option: 복리후생이 있는 곳 까지 스크롤 내리기
+    # row가져오고 col 단위로 접근하기
+    result = []
 
-with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
+    parent = soup.select(selector)[0]
+    button = parent.find('button')
+    if button is not None:
+        driver.find_element_by_css_selector('.jv_benefit > div.cont > button').click()
+
+    columns = parent.select('.col')
+    for column in columns[:-2]:
+        title = column.dt.text
+        value = column.dd.text.strip()
+
+        result.append(title)
+        result.append(value)
+        result.append("\n")
+
+    return "\n".join(result)
+
+
+
+with webdriver.Chrome("./chromedriver") as driver:
     wait = WebDriverWait(driver, 10)
 
     company_name_list = []
@@ -123,15 +127,31 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
     benefit_list = []
     resume_format_list = []
 
-    driver.get("http://www.saramin.co.kr/zf_user/jobs/list/domestic?loc_mcd=105000&cat_cd=404%2C407%2C408%2C402%2C309%2C302%2C301%2C308%2C303%2C314&panel_type=&search_optional_item=n&search_done=y&panel_count=y")
+    print("*"*35)
+    print("*" + " " * 33 + "*")
+    print("*     한남대학교 취업전략개발팀   *")
+    print("* 근로장학생 업무 자동화 프로젝트 *")
+    print("*      사람인 채용공고 크롤러     *")
+    print("*" + " " * 33 + "*")
+    print("*********CREATED BY PRAYME*********")
+
+    print()
+    print()
+    print()
+    print(">> 데이터를 수집할 URL을 입력해주세요 ")
+    target_url = input("<< ").strip()
+
+    driver.get(target_url)
+    print(">> 수집을 시작합니다....")
 
     rows = driver.find_elements_by_css_selector(
         "#default_list_wrap > section > div.list_body > .list_item")
-    print("BEFORE", len(rows))
+    print(">> 대전 지역, 10일 이상, 신입 조건 채용공고 필터링 시작....")
     rows = filter_by_condition(rows)
-    print("AFTER", len(rows))
+    print(">> 필터링 완료. 총 {}개의 채용공고 수집을 시작합니다....".format(len(rows)))
 
-    for row in rows:
+    for i, row in enumerate(rows):
+        print(">> {}/{}번째 채용공고 수집 시작".format(i, len(rows)))
         # print("ROW", row)
         # row에서 해결할 수 있는 것들
 
@@ -139,9 +159,10 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
         driver.get(row)
 
         # DOM 로딩 기다리기
-        wait.until(presence_of_element_located(
-            (By.CSS_SELECTOR, ".info_period > dd:nth-child(4)")
-        ))
+        # wait.until(presence_of_element_located(
+        #     (By.CSS_SELECTOR, ".info_period > dd:nth-child(4)")
+        # ))
+        sleep(5)
 
         # HTML 얻기
         html = driver.page_source
@@ -149,32 +170,26 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
 
         # # 각 아이템의 회사 이름 가져오기
         company_name = get_column_value(soup, ".company_name", default_parser)
-        # print("COMPANY NAME", company_name)
-
-        # 각 아이템의 URL 가져오기
-        url = row
-
-        # # 각 아이템의 모집 집종 가져오기
-        # print("JOB SECTOR", row.find_element_by_css_selector('.job_sector').text)
+        print("COMPANY NAME", company_name)
 
         # # # 각 아이템의 근무 주소 가져오기
         work_location = get_column_value(
             soup, "#map_0 > div > address > span", default_parser)
-        # print("WORK LOCATION", work_location)
+        print("WORK LOCATION", work_location)
 
         # # # 각 아이템의 이력서 제출 형식 가져오기
         resume_submission_format = get_column_value(
             soup, '.template', default_parser)
-        # print("RESUME SUBMISSION FORMAT", resume_submission_format)
+        print("RESUME SUBMISSION FORMAT", resume_submission_format)
 
         # # 각 아이템의 모집 마감 날짜 가져오기
         deadline = get_column_value(
             soup, '.info_period > dd:nth-child(4)', deadline_parser)
-        # print("DEADLINE", deadline)
+        print("DEADLINE", deadline)
 
         # # # 각 아이템의 복리후생 가져오기
-        benefit = get_column_value(soup, '.jv_benefit', default_parser)
-        # print("BENEFIT", benefit)
+        benefit = get_column_value(soup, '.jv_benefit', benefit_parser)
+        print("BENEFIT", benefit)
 
         cont = soup.select(".cont")[0]
         income = ""
@@ -183,20 +198,20 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
         for column in cont:
             for dl in column.select("dl"):
                 if "급여" == dl.dt.text:
-                    # print("급여", dl.dd.text)
+                    print("급여", dl.dd.text)
                     income = dl.dd.text
                 elif "근무일시" == dl.dt.text:
-                    # print("근무일시", dl.dd.text)
-                    work_time = dl.dt.text
+                    print("근무일시", dl.dd.text)
+                    work_time = dl.dd.text
                 elif "우대사항" == dl.dt.text:
-                    # print("우대사항", dl.dd.text)
+                    print("우대사항", dl.dd.text)
                     find_who = dl.dd.text
 
         # 사업내용 가져오기
 
         company_detail = get_column_value(
             soup, '.jv_header > a.company', href_parser)
-        # print("COMPANY_DETAIL", company_detail)
+        print("COMPANY_DETAIL", company_detail)
 
         sleep(5)
 
@@ -219,25 +234,27 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
         try:
             detail = company_detail_soup.select(
                 '#company_info_introduce')[0].text.strip()
-            # detail = company_detail_soup.select(".list_info")
+            detail = company_detail_soup.select(".list_info")
 
             if "사업내용" in detail:
                 index = detail.index("사업내용")
                 content = detail[index:]
-                # print("사업내용", content)
+                content.replace("사업내용", "")
+                print("사업내용", content)
             elif "업종" in detail:
                 index = detail.index("업종")
                 content = detail[index:]
-            # print("업종", content)
+                content.replace("업종", "")
+                print("업종", content)
 
             boxes = company_detail_soup.select(".list_intro > li")
 
             for box in boxes:
                 if "사원" in box.em:
-                    # print("사원 수 ", box.select(".desc")[0].text)
+                    print("사원 수 ", box.select(".desc")[0].text)
                     imployee = box.select(".desc")[0].text
                 elif "매출" in box.em:
-                    # print("매출", box.select(".desc")[0].text)
+                    print("매출", box.select(".desc")[0].text)
                     sales = box.select(".desc")[0].text
         except:
             print("사업내용 쪽 에러 남")
@@ -246,7 +263,7 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
         content_list.append(content)
         aa_list.append(aa)
         work_location_list.append(work_location)
-        url_list.append(url)
+        url_list.append(row)
         deadline_list.append(deadline)
         imployee_list.append(imployee)
         sales_list.append(sales)
@@ -257,6 +274,9 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
         benefit_list.append(benefit)
         resume_format_list.append(resume_submission_format)
 
+        print(">> {}/{}번째 채용공고 수집 완료".format(i, len(rows)))
+
+    print(">> Excel 파일로 저장을 시작합니다.")
     df = pd.DataFrame({
         "사업장명(회사이름)": company_name_list,
         "사업내용": content_list,
@@ -277,5 +297,8 @@ with webdriver.Chrome("C:/Users/prayme/chromedriver") as driver:
         "제출서류": resume_format_list
     })
 
-    df.to_csv('utf_채용공고.csv', encoding='utf-8-sig')
-    df.to_csv('euc_채용공고.csv', encoding='euc-kr')
+    save_time = datetime.now().strftime("%Y/%m/%d_%H시%M분")
+    file_name = '{}_채용공고'
+    # df.to_csv('{}utf_채용공고.csv'.format(save_time), encoding='utf-8-sig')
+    df.to_csv(file_name.format(save_time), encoding='euc-kr')
+    print(">> Excel 파일로 저장을 완료했습니다.")
