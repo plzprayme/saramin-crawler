@@ -236,6 +236,9 @@ with webdriver.Chrome("./chromedriver") as driver:
                 '#company_info_introduce')[0].text.strip()
             detail = company_detail_soup.select(".list_info")
 
+            # https://stackoverflow.com/questions/6287529/how-to-find-children-of-nodes-using-beautifulsoup
+            # findChildren 으로 가져오기
+
             if "사업내용" in detail:
                 index = detail.index("사업내용")
                 content = detail[index:]
