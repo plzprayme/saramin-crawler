@@ -234,29 +234,27 @@ with webdriver.Chrome("./chromedriver") as driver:
         try:
             detail = company_detail_soup.select(
                 '#company_info_introduce')[0].text.strip()
-            detail = company_detail_soup.select(".list_info")
+            detail_dt = company_detail_soup.select(".list_info > dt > .txt")
+            detail_dd = company_detail_soup.select(".list_info > dd")
 
-            # https://stackoverflow.com/questions/6287529/how-to-find-children-of-nodes-using-beautifulsoup
-            # findChildren 으로 가져오기
+            for i, title in enumerate(detail_dt):
+                if "사업내용" in title.text.strip():
+                    content = detail_dd[i].text.strip()
 
-            if "사업내용" in detail:
-                index = detail.index("사업내용")
-                content = detail[index:]
-                content.replace("사업내용", "")
-                print("사업내용", content)
-            elif "업종" in detail:
-                index = detail.index("업종")
-                content = detail[index:]
-                content.replace("업종", "")
-                print("업종", content)
+            if content == "":
+                for i, title in enumerate(detail_dt):
+                    if "업종" in title.text.strip():
+                        content = detail_dd[i].text.strip()
+
+            print("사업내용", content)
 
             boxes = company_detail_soup.select(".list_intro > li")
 
             for box in boxes:
-                if "사원" in box.em:
+                if "사원" in box.em.text:
                     print("사원 수 ", box.select(".desc")[0].text)
                     imployee = box.select(".desc")[0].text
-                elif "매출" in box.em:
+                elif "매출" in box.em.text:
                     print("매출", box.select(".desc")[0].text)
                     sales = box.select(".desc")[0].text
         except:
@@ -293,15 +291,15 @@ with webdriver.Chrome("./chromedriver") as driver:
         "근로자 수": imployee_list,
         "매출액": sales_list,
         "성별": gender_list,
-        "우대조건": find_who,
+        "우대조건": find_who_list,
         "임금액": income_list,
         "근무시간": work_time_list,
         "복리후생": benefit_list,
         "제출서류": resume_format_list
     })
 
-    save_time = datetime.now().strftime("%Y/%m/%d_%H시%M분")
-    file_name = '{}_채용공고'
+    save_time = datetime.now().strftime("%Y_%m_%d_%H시%M분")
+    name = '{}_채용공고.csv'
     # df.to_csv('{}utf_채용공고.csv'.format(save_time), encoding='utf-8-sig')
-    df.to_csv(file_name.format(save_time), encoding='euc-kr')
+    df.to_csv(name.format(save_time), encoding='euc-kr')
     print(">> Excel 파일로 저장을 완료했습니다.")
