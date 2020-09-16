@@ -204,8 +204,11 @@ with webdriver.Chrome("./chromedriver") as driver:
                     print("근무일시", dl.dd.text)
                     work_time = dl.dd.text
                 elif "우대사항" == dl.dt.text:
-                    print("우대사항", dl.dd.text)
-                    find_who = dl.dd.text
+                    result = []
+                    for item in dl.select(".toolTipTxt > li"):
+                        result.append(item.text.strip())
+                    print("우대사항", "\n".join(result))
+                    find_who = "\n".join(result)
 
         # 사업내용 가져오기
 
