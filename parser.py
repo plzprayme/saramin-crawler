@@ -1,14 +1,9 @@
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support.expected_conditions import presence_of_element_located
 
 from bs4 import BeautifulSoup as bs4
 
-from time import sleep
-
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 
 from time import sleep
 
@@ -27,7 +22,7 @@ def filter_by_condition(rows):
 
         try:
             if is_deadline_over_ten_days(deadline) \
-                    and "대전" in location_condition  \
+                    and "대전" in location_condition \
                     and ("신입" in career_condition or "경력무관" in career_condition):
                 print("=====FILTERED ROW=====")
                 print("LOCATION CONDITION", location_condition)
@@ -76,6 +71,15 @@ def default_parser(soup, selector):
     return soup.select(selector)[0].text.strip()
 
 
+def replace_wrap_parser(soup, selector):
+    target = soup.select(selector)[0]
+    result = target.text
+    if target.select(".toolTipWrap"):
+        result = result.replace(target.select(".toolTipWrap")[0].text, "")
+
+    return result.strip()
+
+
 def deadline_parser(soup, selector):
     deadline = soup.select(selector)[0].text  # YYYY.MM.DD tt:mm
     return deadline.split(" ")[0]  # YYYY.MM.DD
@@ -83,6 +87,7 @@ def deadline_parser(soup, selector):
 
 def href_parser(soup, selector):
     return soup.select(selector)[0].attrs["href"]
+
 
 def benefit_parser(soup, selector):
     # 버튼이 있는지 없는지 살펴보기
@@ -108,6 +113,11 @@ def benefit_parser(soup, selector):
     return "\n".join(result)
 
 
+def get_next_page_url(base_url, page):
+    url = base_url.split("?")
+    url[1] = "page={}&" + url[1]
+    return "?".join(url)
+
 
 with webdriver.Chrome("./chromedriver") as driver:
     wait = WebDriverWait(driver, 10)
@@ -115,6 +125,8 @@ with webdriver.Chrome("./chromedriver") as driver:
     company_name_list = []
     content_list = []
     aa_list = []
+    recruitment_number_list = []
+    task_list = []
     work_location_list = []
     url_list = []
     deadline_list = []
@@ -127,7 +139,7 @@ with webdriver.Chrome("./chromedriver") as driver:
     benefit_list = []
     resume_format_list = []
 
-    print("*"*35)
+    print("*" * 35)
     print("*" + " " * 33 + "*")
     print("*     한남대학교 취업전략개발팀   *")
     print("* 근로장학생 업무 자동화 프로젝트 *")
@@ -149,6 +161,14 @@ with webdriver.Chrome("./chromedriver") as driver:
     print(">> 대전 지역, 10일 이상, 신입 조건 채용공고 필터링 시작....")
     rows = filter_by_condition(rows)
     print(">> 필터링 완료. 총 {}개의 채용공고 수집을 시작합니다....".format(len(rows)))
+
+    page = 1
+    while len(rows) <= 40:
+        page += 1
+        next_page = get_next_page_url(target_url, page)
+        elements = driver.find_elements_by_css_selector(
+            "#default_list_wrap > section > div.list_body > .list_item")
+        rows += filter_by_condition(elements)
 
     for i, row in enumerate(rows):
         print(">> {}/{}번째 채용공고 수집 시작".format(i, len(rows)))
@@ -172,14 +192,18 @@ with webdriver.Chrome("./chromedriver") as driver:
         company_name = get_column_value(soup, ".company_name", default_parser)
         print("COMPANY NAME", company_name)
 
+        ############# 여기까지 완료 #################
+
         # # # 각 아이템의 근무 주소 가져오기
         work_location = get_column_value(
             soup, "#map_0 > div > address > span", default_parser)
         print("WORK LOCATION", work_location)
 
         # # # 각 아이템의 이력서 제출 형식 가져오기
+        # resume_submission_format = get_column_value(
+        #     soup, '.template', default_parser)
         resume_submission_format = get_column_value(
-            soup, '.template', default_parser)
+            soup, '.template', replace_wrap_parser)
         print("RESUME SUBMISSION FORMAT", resume_submission_format)
 
         # # 각 아이템의 모집 마감 날짜 가져오기
@@ -197,21 +221,38 @@ with webdriver.Chrome("./chromedriver") as driver:
         find_who = ""
         for column in cont:
             for dl in column.select("dl"):
-                if "급여" == dl.dt.text:
-                    print("급여", dl.dd.text)
-                    income = dl.dd.text
-                elif "근무일시" == dl.dt.text:
-                    print("근무일시", dl.dd.text)
-                    work_time = dl.dd.text
-                elif "우대사항" == dl.dt.text:
+                title = dl.dt.text
+                content = dl.dd.text
+                tooltip = dl.select(".toolTipWrap")
+                if "급여" == title:
+                    print("급여", content)
+                    if tooltip:
+                        content.replace(tooltip[0].text, "").strip()
+                    income = content
+                    print("급여", income)
+                elif "근무일시" == title:
+                    print("근무일시", content)
+                    if tooltip:
+                        content.replace(tooltip[0].text, "").strip()
+                    work_time = content
+                    print("근무일시", work_time)
+                elif "우대사항" == title:
                     result = []
                     for item in dl.select(".toolTipTxt > li"):
                         result.append(item.text.strip())
                     print("우대사항", "\n".join(result))
                     find_who = "\n".join(result)
 
-        # 사업내용 가져오기
+        recruitment_number = get_column_value(soup, ".recruit_division_0 #template_divisions_work_dept_nm_0",
+                                              default_parser)
+        print("RECRUIT_NUMBER", recruitment_number)
 
+        task = get_column_value(soup,
+                                ".recruit_division_0 #template_divisions_assign_task_nm_0 > tbody > tr:nth-child(2) > td",
+                                default_parser)
+        print("TASK", task)
+
+        # 사업내용 가져오기
         company_detail = get_column_value(
             soup, '.jv_header > a.company', href_parser)
         print("COMPANY_DETAIL", company_detail)
@@ -232,7 +273,6 @@ with webdriver.Chrome("./chromedriver") as driver:
         content = ""
         imployee = ""
         sales = ""
-        aa = ""
         gender = "무관"
         try:
             detail = company_detail_soup.select(
@@ -265,7 +305,9 @@ with webdriver.Chrome("./chromedriver") as driver:
 
         company_name_list.append(company_name)
         content_list.append(content)
-        aa_list.append(aa)
+        aa_list.append("")
+        recruitment_number_list.append(recruitment_number)
+        task_list.append(task)
         work_location_list.append(work_location)
         url_list.append(row)
         deadline_list.append(deadline)
@@ -278,15 +320,13 @@ with webdriver.Chrome("./chromedriver") as driver:
         benefit_list.append(benefit)
         resume_format_list.append(resume_submission_format)
 
-        print(">> {}/{}번째 채용공고 수집 완료".format(i, len(rows)))
-
     print(">> Excel 파일로 저장을 시작합니다.")
     df = pd.DataFrame({
         "사업장명(회사이름)": company_name_list,
         "사업내용": content_list,
         "모집직종": aa_list,
-        "모집인원": aa_list,
-        "직무내용": aa_list,
+        "모집인원": recruitment_number,
+        "직무내용": task_list,
         "근무지주소": work_location_list,
         "소재지주소": work_location_list,
         "공지사이트": url_list,
