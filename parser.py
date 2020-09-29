@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
 from bs4 import BeautifulSoup as bs4
@@ -115,7 +116,7 @@ def benefit_parser(soup, selector):
 
 def get_next_page_url(base_url, page):
     url = base_url.split("?")
-    url[1] = "page={}&" + url[1]
+    url[1] = f"page={page}&" + url[1]
     return "?".join(url)
 
 
@@ -156,19 +157,22 @@ with webdriver.Chrome("./chromedriver") as driver:
     driver.get(target_url)
     print(">> 수집을 시작합니다....")
 
-    rows = driver.find_elements_by_css_selector(
-        "#default_list_wrap > section > div.list_body > .list_item")
+    rows = driver.find_elements_by_css_selector(".content  > .item_recruit")
     print(">> 대전 지역, 10일 이상, 신입 조건 채용공고 필터링 시작....")
     rows = filter_by_condition(rows)
-    print(">> 필터링 완료. 총 {}개의 채용공고 수집을 시작합니다....".format(len(rows)))
 
     page = 1
     while len(rows) <= 40:
         page += 1
         next_page = get_next_page_url(target_url, page)
-        elements = driver.find_elements_by_css_selector(
-            "#default_list_wrap > section > div.list_body > .list_item")
+        driver.get(next_page)
+        elements = driver.find_elements_by_css_selector(".content  > .item_recruit")
         rows += filter_by_condition(elements)
+        rows = set(rows)
+        rows = list(rows)
+
+    print(">> 필터링 완료. 총 {}개의 채용공고 수집을 시작합니다....".format(len(rows)))
+
 
     for i, row in enumerate(rows):
         print(">> {}/{}번째 채용공고 수집 시작".format(i, len(rows)))
@@ -215,33 +219,36 @@ with webdriver.Chrome("./chromedriver") as driver:
         benefit = get_column_value(soup, '.jv_benefit', benefit_parser)
         print("BENEFIT", benefit)
 
-        cont = soup.select(".cont")[0]
         income = ""
         work_time = ""
         find_who = ""
-        for column in cont:
-            for dl in column.select("dl"):
-                title = dl.dt.text
-                content = dl.dd.text
-                tooltip = dl.select(".toolTipWrap")
-                if "급여" == title:
-                    print("급여", content)
-                    if tooltip:
-                        content.replace(tooltip[0].text, "").strip()
-                    income = content
-                    print("급여", income)
-                elif "근무일시" == title:
-                    print("근무일시", content)
-                    if tooltip:
-                        content.replace(tooltip[0].text, "").strip()
-                    work_time = content
-                    print("근무일시", work_time)
-                elif "우대사항" == title:
-                    result = []
-                    for item in dl.select(".toolTipTxt > li"):
-                        result.append(item.text.strip())
-                    print("우대사항", "\n".join(result))
-                    find_who = "\n".join(result)
+        try:
+            cont = soup.select(".cont")[0]
+            for column in cont:
+                for dl in column.select("dl"):
+                    title = dl.dt.text
+                    content = dl.dd.text
+                    tooltip = dl.select(".toolTipWrap")
+                    if "급여" == title:
+                        print("급여", content)
+                        if tooltip:
+                            content.replace(tooltip[0].text, "").strip()
+                        income = content
+                        print("급여", income)
+                    elif "근무일시" == title:
+                        print("근무일시", content)
+                        if tooltip:
+                            content.replace(tooltip[0].text, "").strip()
+                        work_time = content
+                        print("근무일시", work_time)
+                    elif "우대사항" == title:
+                        result = []
+                        for item in dl.select(".toolTipTxt > li"):
+                            result.append(item.text.strip())
+                        print("우대사항", "\n".join(result))
+                        find_who = "\n".join(result)
+        except:
+            print("ERROR")
 
         recruitment_number = get_column_value(soup, ".recruit_division_0 #template_divisions_work_dept_nm_0",
                                               default_parser)
@@ -275,19 +282,30 @@ with webdriver.Chrome("./chromedriver") as driver:
         sales = ""
         gender = "무관"
         try:
-            detail = company_detail_soup.select(
-                '#company_info_introduce')[0].text.strip()
-            detail_dt = company_detail_soup.select(".list_info > dt > .txt")
-            detail_dd = company_detail_soup.select(".list_info > dd")
+            detail = company_detail_soup.select(".summary > li")
 
-            for i, title in enumerate(detail_dt):
-                if "사업내용" in title.text.strip():
-                    content = detail_dd[i].text.strip()
+            for li in detail:
+                title = li.span.text
+                body = li.strong.text
+                if "사원수" == title:
+                    imployee = body
+                elif "매출액" == title:
+                    sales = body
 
-            if content == "":
-                for i, title in enumerate(detail_dt):
-                    if "업종" in title.text.strip():
-                        content = detail_dd[i].text.strip()
+            print(f"사업수: {imployee}, 매출액: {sales}")
+
+
+
+            data_title = company_detail_soup.select(".info > dt")
+            data_content = company_detail_soup.select(".info > dd")
+
+            position = 0
+            for i, title in enumerate(data_title):
+                if "업종" == title.text or "사업내용" == title.text:
+                    content == data_content[i].text
+
+            print(f"사업내용: {content}")
+
 
             print("사업내용", content)
 
@@ -343,6 +361,6 @@ with webdriver.Chrome("./chromedriver") as driver:
 
     save_time = datetime.now().strftime("%Y_%m_%d_%H시%M분")
     name = '{}_채용공고.csv'
-    # df.to_csv('{}utf_채용공고.csv'.format(save_time), encoding='utf-8-sig')
-    df.to_csv(name.format(save_time), encoding='euc-kr')
+    df.to_csv('{}utf_채용공고.csv'.format(save_time), encoding='utf-8-sig')
+    # df.to_csv(name.format(save_time), encoding='euc-kr')
     print(">> Excel 파일로 저장을 완료했습니다.")
