@@ -230,13 +230,13 @@ with webdriver.Chrome("./chromedriver") as driver:
                     if "급여" == title:
                         print("급여", content)
                         if tooltip:
-                            content.replace(tooltip[0].text, "").strip()
+                            content = content.replace(tooltip[0].text, "").strip()
                         income = content
                         print("급여", income)
                     elif "근무일시" == title:
                         print("근무일시", content)
                         if tooltip:
-                            content.replace(tooltip[0].text, "").strip()
+                            content = content.replace(tooltip[0].text, "").strip()
                         work_time = content
                         print("근무일시", work_time)
                     elif "우대사항" == title:
