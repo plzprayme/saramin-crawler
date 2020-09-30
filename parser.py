@@ -172,7 +172,6 @@ with webdriver.Chrome("./chromedriver") as driver:
 
     print(">> 필터링 완료. 총 {}개의 채용공고 수집을 시작합니다....".format(len(rows)))
 
-
     for i, row in enumerate(rows):
         print(">> {}/{}번째 채용공고 수집 시작".format(i, len(rows)))
         # print("ROW", row)
