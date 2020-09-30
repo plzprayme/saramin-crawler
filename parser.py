@@ -14,8 +14,7 @@ import pandas as pd
 def filter_by_condition(rows):
     result = []
     for row in rows:
-        location_condition = row.find_element_by_css_selector(
-            ".work_place").text
+        location_condition = row.find_element_by_css_selector("p.work_place").text
         career_condition = row.find_element_by_css_selector(".career").text
         deadline = row.find_element_by_css_selector('.deadlines').text
         url = row.find_element_by_css_selector(
@@ -157,7 +156,7 @@ with webdriver.Chrome("./chromedriver") as driver:
     driver.get(target_url)
     print(">> 수집을 시작합니다....")
 
-    rows = driver.find_elements_by_css_selector(".content  > .item_recruit")
+    rows = driver.find_elements_by_css_selector("#default_list_wrap > section > div.list_body > .list_item")
     print(">> 대전 지역, 10일 이상, 신입 조건 채용공고 필터링 시작....")
     rows = filter_by_condition(rows)
 
@@ -166,7 +165,7 @@ with webdriver.Chrome("./chromedriver") as driver:
         page += 1
         next_page = get_next_page_url(target_url, page)
         driver.get(next_page)
-        elements = driver.find_elements_by_css_selector(".content  > .item_recruit")
+        elements = driver.find_elements_by_css_selector("#default_list_wrap > section > div.list_body > .list_item")
         rows += filter_by_condition(elements)
         rows = set(rows)
         rows = list(rows)
@@ -292,7 +291,7 @@ with webdriver.Chrome("./chromedriver") as driver:
                 elif "매출액" == title:
                     sales = body
 
-            print(f"사업수: {imployee}, 매출액: {sales}")
+            print(f"사원수: {imployee}, 매출액: {sales}")
 
 
 
@@ -302,22 +301,9 @@ with webdriver.Chrome("./chromedriver") as driver:
             position = 0
             for i, title in enumerate(data_title):
                 if "업종" == title.text or "사업내용" == title.text:
-                    content == data_content[i].text
+                    content = data_content[i].text
 
             print(f"사업내용: {content}")
-
-
-            print("사업내용", content)
-
-            boxes = company_detail_soup.select(".list_intro > li")
-
-            for box in boxes:
-                if "사원" in box.em.text:
-                    print("사원 수 ", box.select(".desc")[0].text)
-                    imployee = box.select(".desc")[0].text
-                elif "매출" in box.em.text:
-                    print("매출", box.select(".desc")[0].text)
-                    sales = box.select(".desc")[0].text
         except:
             print("사업내용 쪽 에러 남")
 
